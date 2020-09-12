@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Hamiltonian Snake</title>
+    <style>
+      #snake {
+        border: 1px solid black;
+        background-color: black;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="snake" width="600" height="600"></canvas>
+    <script>
+      const canvas = document.getElementById("snake");
+      const ctx = canvas.getContext("2d");
+      const size = 20;
+      const rows = canvas.height / size;
+      const cols = canvas.width / size;
+      const grid = cols;
+      const graph = new Graph();
+      const graphBuilder = [];
+      let interval;
+
+      function drawSquare(x, y, size, color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, size, size);
+      }
+
+      function drawRect(x, y, width, height, color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, width, height);
+      }
+
+      function drawCircle(x, y, radius, color) {
+        ctx.beginPath();
+        ctx.fillStyle = color;
+        ctx.arc(x + radius, y + radius, radius, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+
+      function drawText(text, x, y, font, color) {
+        ctx.fillStyle = color;
+        ctx.font = font;
+        ctx.fillText(text, x, y);
+      }
+
+      function clearCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+
+      function randomNumber(min, max) {
+        return Math.floor((Math.random() * (max - min - 1) + min) / size) * size;
+      }
+
+      function Node(x, y) {
+        this.x = x;
+        this.y = y;
+        this.edges = [];
+      }
+
+      function Graph() {
+        this.nodes = [];
+
+        this.addNode = function(node) {
+          this.nodes.push(node);
+        }
+
+        this.findNode = function(part) {
+          return this.nodes.find(node => node.x === part.x && node.y === part.y);
+        }
+
+        this.findNodeId = function(part) {
+          return this.nodes.findIndex(node => node.x === part.x && node.y === part.y);
+        }
+      }
+
+      function makeNodes() {
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            graph.addNode(new Node(c * size, r * size));
+          }
+        }
+      }
+
+      function displayNodes() {
+        graph.nodes.forEach(node => {
+          drawSquare(node.x, node.y, 2, 'red');
+        });
+      }
+
+      function addEdges() {
+        for (let x = 0; x < graph.nodes.length; x++) {
+          for (let i = 0; i < graph.nodes.length; i++) {
+            if (graph.nodes[i] === graph.nodes[x])
+              continue;
+
+            if (((graph.nodes[i].x === graph.nodes[x].x - size || graph.nodes[i].x === graph.nodes[x].x + size) && graph.nodes[i].y === graph.nodes[x].y) || ((graph.nodes[i].y === graph.nodes[x].y - size || graph.nodes[i].y === graph.nodes[x].y + size) && graph.nodes[i].x === graph.nodes[x].x)) {
+              graph.nodes[x].edges.push({node: graph.nodes[i], paint: true});
+            }
+          }
+        }
+      }
+
+      function displayEdges() {
+        for (let i = 0; snake.part.length; i++) {
+
+          if (snake.part[i + 1] === undefined)
+            break;
+
+          if (snake.part[i].x - snake.part[i + 1].x === -size) {
+            let node = graph.findNode(snake.part[i + 1]);
+            node.edges.forEach(edgeObj => {
+              let edge = edgeObj.node;
+              if (node.y - edge.y === -size) {
+                edgeObj.paint = false;
+                edge.edges.find(a => a.node === node).paint = false;
+              }
+            });
+          }
+
+          if (snake.part[i].x - snake.part[i + 1].x === size) {
+            let node = graph.findNode(snake.part[i]);
+            node.edges.map(edgeObj => {
+              let edge = edgeObj.node;
+              if (node.y - edge.y === -size) {
+                edgeObj.paint = false;
+                edge.edges.find(a => a.node === node).paint = false;
+              }
+            });
+          }
+
+          if (snake.part[i].y - snake.part[i + 1].y === -size) {
+            let node = graph.findNode(snake.part[i + 1]);
+            node.edges.map(edgeObj => {
+              let edge = edgeObj.node;
+              if (node.x - edge.x === -size) {
+                edgeObj.paint = false;
+                edge.edges.find(a => a.node === node).paint = false;
+              }
+            });
+          }
+
+          if (snake.part[i].y - snake.part[i + 1].y === size) {
+            let node = graph.findNode(snake.part[i]);
+            node.edges.map(edgeObj => {
+              let edge = edgeObj.node;
+              if (node.x - edge.x === -size) {
+                edgeObj.paint = false;
+                edge.edges.find(a => a.node === node).paint = false;
+              }
+            });
+          }
+        }
+
+        graph.nodes.forEach(node => {
+          node.edges.forEach(edgeObj => {
+            let edge = edgeObj.node;
+
+            if (edgeObj.paint) {
+              ctx.beginPath();
+              ctx.strokeStyle = "black";
+              ctx.moveTo(node.x, node.y);
+              ctx.lineTo(edge.x, edge.y);
+              ctx.stroke();
+            }
+
+            edgeObj.paint = true;
+          });
+        });
+      }
+
+      function makeGraph() {
+        let a = [];
+        for (let x = 0; x < graph.nodes.length; x++) {
+          for (let i = 0; i < graph.nodes.length; i++) {
+            if (graph.nodes[x].edges.includes(graph.nodes[i])) {
+              a.push(1);
+            } else {
+              a.push(0);
+            }
+
+          }
+
+          graphBuilder.push(a);
+          a = [];
+        }
+      }
+
+      function HamiltonGraph(vertices) {
+        this.graph = [];
+        for (let r = 0; r < vertices; r++) {
+          let a = [];
+          for (let c = 0; c < vertices; c++) {
+            a.push(0);
+          }
+          this.graph.push(a);
+        }
+
+        this.V = vertices;
+
+        let range = [...Array(this.V).keys()];
+        range.shift();
+
+        this.isSafe = function(v, pos, path) {
+          if (this.graph[ path[pos-1] ][v] === 0)
+            return false;
+
+          for (let i = 0; i < path.length; i++) {
+            if (path[i] === v)
+              return false;
+          }
+          return true;
+        }
+
+        this.hamCycleUtil = function(path, pos) {
+
+          if (pos === this.V) {
+            if (this.graph[ path[pos - 1] ][path[0]] === 1) {
+              return true;
+            } else {
+              return false;
+            }
+          }
+
+          for (let i = 0; i < range.length; i++) {
+            let v = range[i];
+
+            if (this.isSafe(v, pos, path) === true) {
+              path[pos] = v;
+
+              if (this.hamCycleUtil(path, pos + 1) === true) {
+                return true;
+              }
+
+              path[pos] = -1;
+            }
+          }
+
+          return false;
+
+        }
+
+        this.hamCycle = function() {
+          let path = new Array(this.V).fill(-1);
+
+          path[0] = 0;
+
+          if (this.hamCycleUtil(path, 1) === false) {
+            console.log("Solution does not exist");
+            return false;
+          }
+
+          this.printSolution(path)
+          return true;
+        }
+
+        this.printSolution = function(path) {
+          console.log("Solution Exists");
+
+          for (let i = 0; i < path.length; i++) {
+            if (i !== 0) {
+              snake.queue.push(path[i]);
+            }
+          }
+
+          snake.queue.push(path[0]);
+
+        }
+
+      }
+
+      function makeHamiltonGraph() {
+        let g1 = new HamiltonGraph(rows * cols);
+        g1.graph = graphBuilder;
+
+        g1.hamCycle();
+      }
+
+      function makeHamiltonionPath() {
+        let path = [];
+        let times = 0;
+
+        for (let i = 0; i < rows * cols; i += grid) {
+          if (times % 2 === 0) {
+            for (let j = 1; j < cols; j++) {
+              path.push(i + j);
+            }
+          } else {
+            for (let j = cols - 1; j >= 1; j--) {
+              path.push(i + j);
+            }
+          }
+
+          times++;
+        }
+
+        for (let i = rows * cols - grid; i >= 0; i -= grid) {
+          path.push(i);
+        }
+
+       for (let i = 0; i < path.length; i++) {
+          snake.queue.push(path[i]);
+        }
+      }
+
+      const snake = {
+        part: [{x: 0, y: 0}],
+        dx: size,
+        dy:0,
+        color: "#43B929",
+        queue: [],
+        times: 0,
+
+        instructions() {
+          const node = graph.nodes[this.queue[this.times]];
+
+          if (snake.part.length < rows * cols / 2) {
+            this.improveCycle(node);
+          } else {
+            this.dx = node.x - this.part[0].x;
+            this.dy = node.y - this.part[0].y;
+
+            this.times = (this.times + 1) % this.queue.length;
+          }
+
+
+        },
+
+        legalMoves() {
+          const goingLeft = this.dx === -size;
+          const goingUp = this.dy === -size;
+          const goingDown = this.dy === size;
+          const goingRight = this.dx === size;
+          let p;
+
+          if (goingLeft) {
+            p = [[-size, 0], [0, size], [0, -size]];
+          } else if (goingUp) {
+            p = [[size, 0], [-size, 0], [0, -size]];
+          } else if (goingDown) {
+            p = [[size, 0], [-size, 0], [0, size]];
+          } else if (goingRight) {
+            p = [[size, 0], [0, size], [0, -size]];
+          }
+
+          return p;
+        },
+
+        improveCycle(activeNode) {
+          const headNode = graph.findNode(this.part[0]);
+          const headNodeNumber = graph.findNodeId(this.part[0]);
+          const hamiltonianHeadNodeNumber = this.queue.findIndex(part => part === headNodeNumber);
+
+          const tailNodeNumber = graph.findNodeId(this.part[this.part.length - 1]);
+          const hamiltonianTailNodeNumber = this.queue.findIndex(part => part === tailNodeNumber);
+
+          const foodLocation = {x: food.x, y: food.y};
+          const foodNode = graph.findNode(foodLocation);
+          const foodNodeNumber = graph.findNodeId(foodLocation);
+          const hamiltonianFoodNodeNumber = this.queue.findIndex(part => part === foodNodeNumber);
+
+          let minDistance = this.euclideanDistance(activeNode);
+          let gap = hamiltonianFoodNodeNumber - hamiltonianHeadNodeNumber;
+          let chosen = activeNode;
+          let hamiltonianChosen;
+          let ignore = false;
+
+          const p = this.legalMoves();
+
+          for (let i = 0; i < p.length; i++) {
+            let edge = {x: this.part[0].x + p[i][0], y: this.part[0].y + p[i][1]};
+
+            let edgeNode = graph.findNode(edge);
+
+            if (edgeNode === undefined)
+              continue;
+
+            for (let j = 0; j < this.part.length; j++) {
+              if (edgeNode.x === this.part[j].x && edgeNode.y === this.part[j].y) {
+                ignore = true;
+                break;
+              }
+            }
+
+            if (!ignore) {
+              let edgeNodeNumber = graph.findNodeId(edgeNode);
+              let hamiltonianEdgeNodeNumber = this.queue.findIndex(part => part === edgeNodeNumber);
+
+              const distanceFromFood = this.euclideanDistance(edgeNode);
+
+              if (gap > 0) {
+                if (distanceFromFood < minDistance) {
+                  if (hamiltonianHeadNodeNumber > hamiltonianTailNodeNumber || this.part[0] === this.part[this.part.length - 1]) {
+                    if (hamiltonianEdgeNodeNumber > hamiltonianHeadNodeNumber) {
+                      chosen = edgeNode;
+                      hamiltonianChosen = hamiltonianEdgeNodeNumber;
+                    }
+                  } else {
+                    if (hamiltonianEdgeNodeNumber > hamiltonianHeadNodeNumber && hamiltonianEdgeNodeNumber < hamiltonianTailNodeNumber) {
+                      chosen = edgeNode;
+                      hamiltonianChosen = hamiltonianEdgeNodeNumber;
+                    }
+                  }
+                }
+              } else {
+                if (distanceFromFood > minDistance) {
+                  if (hamiltonianHeadNodeNumber > hamiltonianTailNodeNumber) {
+                    if (hamiltonianEdgeNodeNumber > hamiltonianHeadNodeNumber) {
+                      chosen = edgeNode;
+                      hamiltonianChosen = hamiltonianEdgeNodeNumber;
+                    }
+                  } else {
+                    if (hamiltonianEdgeNodeNumber > hamiltonianHeadNodeNumber && hamiltonianEdgeNodeNumber < hamiltonianTailNodeNumber) {
+                      chosen = edgeNode;
+                      hamiltonianChosen = hamiltonianEdgeNodeNumber;
+                    }
+                  }
+                }
+              }
+
+            }
+
+            ignore = false;
+          }
+
+
+          this.dx = chosen.x - this.part[0].x;
+          this.dy = chosen.y - this.part[0].y;
+
+          if (chosen === activeNode) {
+            this.times = (this.times + 1) % this.queue.length;
+          } else {
+            this.times = hamiltonianChosen + 1;
+
+            if (this.times === rows * cols) {
+              this.times = 0;
+            }
+          }
+        },
+
+        manhatanDistance(node) {
+          return Math.abs(food.x - node.x) + Math.abs(food.y - node.y);
+        },
+
+        euclideanDistance(node) {
+          return Math.sqrt(((food.x - node.x) ** 2) + ((food.y - node.y) ** 2));
+        },
+
+        gameSolved() {
+          return this.part.length === rows * cols - 1;
+        },
+
+        newHead() {
+          const head = {x: this.part[0].x + this.dx, y: this.part[0].y + this.dy};
+          this.part.unshift(head);
+
+          if (this.part[0].x === food.x && this.part[0].y === food.y) {
+            if (!this.gameSolved()) {
+              score.current++;
+              food.newFood();
+            } else {
+              food.newFood();
+              console.log("WIN");
+              clearInterval(interval);
+            }
+          } else {
+            this.part.pop();
+          }
+        },
+
+        checkBarriers() {
+          if (this.part[0].x < 0 || this.part[0].x >= canvas.width || this.part[0].y < 0 || this.part[0].y >= canvas.height) {
+            console.log("BARRIER CRASH");
+            clearInterval(interval);
+          }
+        },
+
+        checkBodyCrash() {
+          for (let i = 1; i < this.part.length; i++) {
+            if (this.part[0].x === this.part[i].x && this.part[0].y === this.part[i].y) {
+              console.log("BODY CRASH");
+              clearInterval(interval);
+            }
+          }
+        },
+
+        update() {
+          this.instructions();
+          this.newHead();
+          this.checkBarriers();
+          this.checkBodyCrash();
+        },
+
+        draw() {
+          for (let i = 0; i < this.part.length; i++) {
+            if (i === 0) {
+              drawCircle(this.part[i].x, this.part[i].y, size / 2, this.color);
+
+              if (this.dx === size) {
+                drawRect(this.part[i].x, this.part[i].y, size / 2, size, this.color);
+              }
+              else if (this.dx === -size) {
+                drawRect(this.part[i].x + size / 2, this.part[i].y, size / 2, size, this.color);
+              }
+              else if (this.dy === size) {
+                drawRect(this.part[i].x, this.part[i].y, size, size / 2, this.color);
+              }
+              else if (this.dy === -size) {
+                drawRect(this.part[i].x, this.part[i].y + size / 2, size, size / 2, this.color);
+              }
+
+            } else {
+              drawSquare(this.part[i].x, this.part[i].y, size, this.color);
+            }
+          }
+        }
+      }
+
+      const food = {
+        x: randomNumber(0, canvas.width),
+        y: randomNumber(0, canvas.height),
+        color: "red",
+
+        newFood() {
+          this.x = randomNumber(0, canvas.width);
+          this.y = randomNumber(0, canvas.height);
+
+          snake.part.forEach(part => {
+            if (part.x === this.x && part.y === this.y) {
+              this.newFood();
+            }
+          });
+        },
+
+        draw() {
+          drawCircle(this.x, this.y, size / 2, this.color);
+        }
+      }
+
+      const score = {
+        current: 0,
+        x: canvas.width - 80,
+        y: 20,
+
+        draw() {
+          drawText(`Score: ${this.current}`, this.x, this.y, "15px Arial", "white");
+        }
+
+      }
+
+      function update() {
+        snake.update();
+      }
+
+      function draw() {
+        food.draw();
+        snake.draw();
+        displayEdges();
+        score.draw();
+      }
+
+      function setup() {
+        makeNodes();
+        addEdges();
+        makeGraph();
+        makeHamiltonionPath();
+        displayNodes();
+        displayEdges();
+      }
+
+      function loop() {
+        clearCanvas();
+        update();
+        draw();
+      }
+
+      function game() {
+        setup();
+        interval = setInterval(() => {
+          loop();
+        }, 10);
+      }
+
+      game();
+
+    </script>
+  </body>
+</html>
